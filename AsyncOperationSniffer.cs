@@ -70,14 +70,17 @@ namespace Microsoft.Dynamics365.OrganizationScanner
                 
                 using (SqlCommand command = new SqlCommand(sql, conn))
                 {
+                    
                     this.telemetryClient.TrackTrace("Connecting to SQL");
                     conn.Open();
-                    command.CommandTimeout = 120;
+                    
+                    command.CommandTimeout = 0;
                     this.telemetryClient.TrackTrace("Executing SQL Command");
-                    using (SqlDataReader reader = command.ExecuteReader())
+                    try
                     {
-                        try
+                        using (SqlDataReader reader = command.ExecuteReader())
                         {
+                            this.telemetryClient.TrackTrace("Executed SQL Command");
                             while (reader.Read())
                             {
                                 MetricTelemetry metricTelemetry = new MetricTelemetry();
@@ -131,13 +134,21 @@ namespace Microsoft.Dynamics365.OrganizationScanner
                             }
                             this.telemetryClient.Flush();
                         }
-                        catch (Exception ex)
-                        {
-                            this.telemetryClient.TrackException(ex);
-                            throw ex;
-                        }
-
                     }
+                    catch(SqlException sqlEx)
+                    {
+                        this.telemetryClient.TrackException(sqlEx);
+                        this.telemetryClient.Flush();
+                        throw sqlEx;
+                    }
+                    catch (Exception ex)
+                    {
+                        this.telemetryClient.TrackException(ex);
+                        this.telemetryClient.Flush();
+                        throw ex;
+                    }
+
+                    
                 }
             }
 
