@@ -1,0 +1,9 @@
+{
+  "profiles": {
+    "Microsoft.Dynamics365.OrganizationScanner": {
+      "commandName": "Project",
+      "commandLineArgs": "--port 7060",
+      "launchBrowser": false
+    }
+  }
+}
