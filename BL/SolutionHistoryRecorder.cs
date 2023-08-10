@@ -27,16 +27,97 @@ using Microsoft.ApplicationInsights;
 using System.Diagnostics;
 using System.Linq;
 using Microsoft.Dynamics365.OrganizationScanner.DAL;
+using System.Runtime.Serialization;
+using Microsoft.OData.Edm;
+using static Microsoft.Dynamics365.OrganizationScanner.DAL.DataverseDataLayer;
+using System.Collections.Generic;
+using Microsoft.Xrm.Sdk.Organization;
+using System.Drawing;
 
 namespace Microsoft.Dynamics365.OrganizationScanner
 {
     public class SolutionHistoryRecorder
     {
+        #region DTO
+        [DataContract]
+        public class SolutionHistoryRecorderRequest
+        {
+            [DataMember]
+            public string SolutionName { get; set; }
+            [DataMember]
+            public string StartTime { get; set; }
+
+        }
+        public class SolutionHistoryRecorderResponse
+        {
+            [DataMember]
+            public string SolutionName { get; set; }
+            [DataMember]
+            public string StartTime { get; set; }
+            [DataMember]
+            public List<SolutionHistory> SolutionHistories { get; set; }
+
+        }
+
+        public class SolutionHistory
+        {
+            [DataMember]
+            public string msdyn_solutionhistoryid { get; set; }
+            [DataMember]
+            public string msdyn_name { get; set; }
+            [DataMember]
+            public string msdyn_correlationid { get; set; }
+            [DataMember]
+            public string msdyn_endtime { get; set; }
+            [DataMember]
+            public string msdyn_errorcode { get; set; }
+            [DataMember]
+            public string msdyn_exceptionmessage { get; set; }
+            [DataMember]
+            public string msdyn_exceptionstack { get; set; }
+            [DataMember]
+            public string msdyn_ismanaged { get; set; }
+            [DataMember]
+            public string msdyn_ispatch { get; set; }
+            [DataMember]
+            public string msdyn_operation { get; set; }
+            [DataMember]
+            public string msdyn_packagename { get; set; }
+            [DataMember]
+            public string msdyn_publishername { get; set; }
+            [DataMember]
+            public string msdyn_solutionid { get; set; }
+            [DataMember]
+            public string msdyn_solutionversion { get; set; }
+            [DataMember]
+            public string msdyn_starttime { get; set; }
+            [DataMember]
+            public string msdyn_status { get; set; }
+            [DataMember]
+            public string msdyn_suboperation { get; set; }
+            [DataMember]
+            public string msdyn_result { get; set; }
+            [DataMember]
+            public string msdyn_totaltime { get; set; }
+            [DataMember]
+            public string msdyn_publisherid { get; set; }
+            [DataMember]
+            public string msdyn_retrycount { get; set; }
+            [DataMember]
+            public string msdyn_packageversion { get; set; }
+            [DataMember]
+            public string msdyn_maxretries { get; set; }
+
+        }
+        #endregion DTO
+        #region class props
         private readonly TelemetryClient telemetryClient;
         public readonly string tenantId;
         public readonly string orgUrl;
         public readonly string clientId;
         public readonly string clientSecret;
+        #endregion
+        #region ctor
         public SolutionHistoryRecorder() {
             this.tenantId = System.Environment.GetEnvironmentVariable(
                                     "TENANT_ID", EnvironmentVariableTarget.Process);
@@ -53,102 +134,57 @@ namespace Microsoft.Dynamics365.OrganizationScanner
             logger.Log("MonitorWithApplicationInsightsExample constructor called. Using Environment Variable APPINSIGHTS_INSTRUMENTATIONKEY to get Application Insights Key");
 
         }
+        #endregion
+        #region Functions
         [FunctionName("SolutionHistoryRecorder")]
         public async Task<IActionResult> Run(
             [HttpTrigger(AuthorizationLevel.Function, "post", Route = null)] HttpRequest req,
             ExecutionContext exCtx,
             ILogger log)
         {
-            log.LogInformation("C# HTTP trigger function processed a request.");
+            log.LogInformation("Running SolutionHistoryRecorder.");
 
             string name = req.Query["name"];
 
             string requestBody = await new StreamReader(req.Body).ReadToEndAsync();
-            dynamic data = JsonConvert.DeserializeObject(requestBody);
-            name = name ?? data?.name;
+            dynamic data = JsonConvert.DeserializeObject<SolutionHistoryRecorderRequest>(requestBody);
+            //name = name ?? data?.name;
 
+            DataverseDataLayer dataverse = new DataverseDataLayer(log, true);
 
-            string token = ConnectToDynamics(new S2SAuthenticationSettings()
+            string token = dataverse.ConnectToDynamics(new S2SAuthenticationSettings()
             {
                 clientId = clientId,
                 clientSecret = clientSecret,
                 tenantID = tenantId,
                 organizationUrl = orgUrl
             });
+            SolutionHistoryRecorderRequest solutionHistoryRecorderRequest = new SolutionHistoryRecorderRequest()
+            {
+                SolutionName = data.SolutionName,
+                StartTime = data.StartTime
+            };
             Stopwatch requestTime = new Stopwatch();
             requestTime.Start();
-            HttpResponseMessage whoAmIResponse = await ExecuteWhoAmI(log, orgUrl, token);
+            SolutionHistoryRecorderResponse ExecuteSolutionHistoryResponse = await dataverse.ExecuteSolutionHistoryRequest(solutionHistoryRecorderRequest);
             requestTime.Stop();
+            log.LogInformation("ExecuteSolutionHistoryRequest took " + requestTime.ElapsedMilliseconds + " ms.");
+            
+            log.LogInformation("Found " + ExecuteSolutionHistoryResponse.SolutionHistories.Count + " for solution.");
             //rtnObject.Headers.Add("InvocationId", exCtx.InvocationId.ToString());
-           
-            SendAvailabilityTelemetry(exCtx.InvocationId, exCtx.InvocationId, whoAmIResponse, Convert.ToInt32(requestTime.ElapsedMilliseconds));
-            string responseMessage = string.IsNullOrEmpty(name)
-                ? "This HTTP triggered function executed successfully. Pass a name in the query string or in the request body for a personalized response."
+            foreach (SolutionHistory solutionHistory in ExecuteSolutionHistoryResponse.SolutionHistories)
+            {
+                //Log or store in table...
+                //log.LogInformation(String.Format("{0} Solution History", data.SolutionName), solutionHistory.msdyn_endtime));
+            }
+            string responseMessage = string.IsNullOrEmpty(data.SolutionName)
+                ? "Soluton History Recorded completed successfully. Found " + ExecuteSolutionHistoryResponse.SolutionHistories.Count() + " for solution " + data.SolutionName
                 : $"Hello, {name}. This HTTP triggered function executed successfully.";
 
             return new OkObjectResult(responseMessage);
         }
-
-        private string ConnectToDynamics(S2SAuthenticationSettings authenticationSettings) {
-            ClientCredential clientcred = new ClientCredential(authenticationSettings.clientId, authenticationSettings.clientSecret);
-            AuthenticationContext authenticationContext = new AuthenticationContext(authenticationSettings.aadInstance + authenticationSettings.tenantID);
-            var authenticationResult = authenticationContext.AcquireTokenAsync(authenticationSettings.organizationUrl, clientcred).Result;
-            return authenticationResult.AccessToken;
-
-        }
-        public class S2SAuthenticationSettings {
-            public string organizationUrl;
-            public string clientId;
-            public string clientSecret;
-            public string aadInstance = "https://login.microsoftonline.com/";
-            public string tenantID;
-        }
-
-        private async Task<HttpResponseMessage> ExecuteWhoAmI(ILogger log, string dynamicsUrl, string token) {
-            var httpClient = new HttpClient
-            {
-                BaseAddress = new Uri(dynamicsUrl),
-                Timeout = new TimeSpan(0, 2, 0)
-            };
-            httpClient.DefaultRequestHeaders.Add("OData-MaxVersion", "4.0");
-            httpClient.DefaultRequestHeaders.Add("OData-Version", "4.0");
-            httpClient.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
-            httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
-
-            // Add this line for TLS complaience
-            ServicePointManager.SecurityProtocol = SecurityProtocolType.Tls12;
-
-            // Call SolutionHistory
-            //https://alyousse.crm.dynamics.com/api/data/v9.0/msdyn_solutionhistories?$filter=msdyn_name%20eq%20%27msdynce_LeadManagementAnchor%27
-
-            string queryFilter = "?$filter=";
-            string solutionName = string.Empty;
-            string startTime = string.Empty;
-            if (String.IsNullOrEmpty(solutionName) && String.IsNullOrEmpty(startTime))
-            {
-                throw new ArgumentNullException("Missing Solution Name and Start Time parameters");
-            }
-            else if (!String.IsNullOrEmpty(solutionName) && !String.IsNullOrEmpty(startTime)) { queryFilter += "msdyn_name eq '" + solutionName + "' and msdyn_starttime gt '" + startTime + "'"; }
-            else
-            {
-                if (!String.IsNullOrEmpty(solutionName)) { queryFilter += "msdyn_name eq '" + solutionName + "'"; }
-                if (!String.IsNullOrEmpty(startTime)) { queryFilter = "msdyn_starttime gt '" + startTime + "'"; }
-            }
-            var retrieveResponse = await httpClient.GetAsync(String.Format("api/data/v9.0/msdyn_solutionhistories{0}", queryFilter));
-            if (retrieveResponse.IsSuccessStatusCode) {
-                var jRetrieveResponse = JObject.Parse(retrieveResponse.Content.ReadAsStringAsync().Result);
-
-                var currUserId = (Guid)jRetrieveResponse["UserId"];
-                var businessId = (Guid)jRetrieveResponse["BusinessUnitId"];
-
-                
-                return retrieveResponse;
-            }
-            else {
-                throw new Exception();
-            }
-        }
-
+        #endregion
+        #region Helper methods
         public HttpResponseMessage SendAvailabilityTelemetry(Guid operationId, Guid requestId, HttpResponseMessage response, int duration) {
             AvailabilityTelemetry availability = new AvailabilityTelemetry();
             DateTime dt = DateTime.Now;
@@ -168,6 +204,6 @@ namespace Microsoft.Dynamics365.OrganizationScanner
             telemetryClient.Flush();
             return response;
         }
-
+        #endregion
     }
 }

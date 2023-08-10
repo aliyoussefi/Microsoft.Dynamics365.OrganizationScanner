@@ -120,6 +120,7 @@ namespace Microsoft.Dynamics365.OrganizationScanner
 
             // Call WhoAmI
             var retrieveResponse = await httpClient.GetAsync("api/data/v9.0/WhoAmI");
+            
             if (retrieveResponse.IsSuccessStatusCode) {
                 var jRetrieveResponse = JObject.Parse(retrieveResponse.Content.ReadAsStringAsync().Result);
 
