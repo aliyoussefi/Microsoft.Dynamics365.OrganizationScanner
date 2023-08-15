@@ -9,20 +9,20 @@ using System.Threading.Tasks;
 
 namespace Microsoft.Dynamics365.OrganizationScanner.DAL
 {
-    internal static class DataverseApiDTOMapper
+    internal static class PowerPlatformAdminDataMapper
     {
-        public static SolutionHistoryDTO.SolutionHistoryRecorderResponse DataverseToDTO(string solutionHistoryResponse)
+        public static ApplicationPackageDTO.ApplicationStatusResponse GetEnvironmentApplicationPackageToDTO(string solutionHistoryResponse)
         {
-            SolutionHistoryDTO.SolutionHistoryRecorderResponse rtnObject = new SolutionHistoryDTO.SolutionHistoryRecorderResponse();
+            ApplicationPackageDTO.ApplicationStatusResponse rtnObject = new ApplicationPackageDTO.ApplicationStatusResponse();
 
             JArray solutions = new JArray();
             JObject responseObject = JObject.Parse(solutionHistoryResponse);
             solutions = (JArray)responseObject["value"];
             if (solutions.Count > 0 ) { 
-                rtnObject.SolutionHistories = new List<SolutionHistoryDTO.SolutionHistory>(); 
+                rtnObject.ApplicationPackages = new List<ApplicationPackageDTO.ApplicationPackage>(); 
                 foreach (var solution in solutions)
                 {
-                    rtnObject.SolutionHistories.Add(solution.ToObject<SolutionHistoryDTO.SolutionHistory>());
+                    rtnObject.ApplicationPackages.Add(solution.ToObject<ApplicationPackageDTO.ApplicationPackage>());
                 }
             }
 

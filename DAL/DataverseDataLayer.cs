@@ -11,10 +11,10 @@ using System.Threading.Tasks;
 using Microsoft.IdentityModel.Clients.ActiveDirectory;
 using Microsoft.PowerPlatform.Dataverse.Client;
 using Newtonsoft.Json.Linq;
-using static Microsoft.Dynamics365.OrganizationScanner.SolutionHistoryRecorder;
 using Microsoft.Xrm.Sdk.PluginTelemetry;
 using Microsoft.Extensions.Logging;
 using Microsoft.AspNetCore.Http;
+using Microsoft.Dynamics365.OrganizationScanner.DTO;
 
 namespace Microsoft.Dynamics365.OrganizationScanner.DAL
 {
@@ -48,18 +48,11 @@ namespace Microsoft.Dynamics365.OrganizationScanner.DAL
         }
 
 
-        public class S2SAuthenticationSettings
-        {
-            public string organizationUrl;
-            public string clientId;
-            public string clientSecret;
-            public string aadInstance = "https://login.microsoftonline.com/";
-            public string tenantID;
-        }
+
         #region DTO Methods
-        public async Task<SolutionHistoryRecorderResponse> ExecuteSolutionHistoryRequest(SolutionHistoryRecorderRequest request)
+        public async Task<SolutionHistoryDTO.SolutionHistoryRecorderResponse> ExecuteSolutionHistoryRequest(SolutionHistoryDTO.SolutionHistoryRecorderRequest request)
         {
-            SolutionHistoryRecorderResponse response = null;
+            SolutionHistoryDTO.SolutionHistoryRecorderResponse response = null;
             if (_preferSdk)
             {
                 return ExecuteSolutionHistoryRequestSDK(request);
@@ -69,9 +62,9 @@ namespace Microsoft.Dynamics365.OrganizationScanner.DAL
                 return ExecuteSolutionHistoryRequestAPI(request);
             }
         }
-        private SolutionHistoryRecorderResponse ExecuteSolutionHistoryRequestAPI(SolutionHistoryRecorderRequest request)
+        private SolutionHistoryDTO.SolutionHistoryRecorderResponse ExecuteSolutionHistoryRequestAPI(SolutionHistoryDTO.SolutionHistoryRecorderRequest request)
         {
-            SolutionHistoryRecorderResponse response = null;
+            SolutionHistoryDTO.SolutionHistoryRecorderResponse response = null;
             var httpClient = new HttpClient
             {
                 BaseAddress = new Uri(_orgUrl),
@@ -115,9 +108,9 @@ namespace Microsoft.Dynamics365.OrganizationScanner.DAL
                 throw new WebException($"Query operation failed for {_orgUrl}:\nReason: {retrieveResponse.Result.ReasonPhrase}");
             }
         }
-        private SolutionHistoryRecorderResponse ExecuteSolutionHistoryRequestSDK(SolutionHistoryRecorderRequest request)
+        private SolutionHistoryDTO.SolutionHistoryRecorderResponse ExecuteSolutionHistoryRequestSDK(SolutionHistoryDTO.SolutionHistoryRecorderRequest request)
         {
-            SolutionHistoryRecorderResponse response = null;
+            SolutionHistoryDTO.SolutionHistoryRecorderResponse response = null;
             
             string queryFilter = "?$filter=";
             string solutionName = request.SolutionName;

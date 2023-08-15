@@ -8,19 +8,14 @@
 # (ii) to include a valid copyright notice on Your software product in which the Sample Code is embedded; 
 # and (iii) to indemnify, hold harmless, and defend Us and Our suppliers from and against any claims or lawsuits, including attorneys’ fees, that arise or result from the use or distribution of the Sample Code 
 */
-using System;
-using System.Threading.Tasks;
 using Microsoft.ApplicationInsights;
 using Microsoft.ApplicationInsights.DataContracts;
-using Microsoft.Azure.WebJobs;
-using Microsoft.Azure.WebJobs.Host;
-using Microsoft.Data.SqlClient;
-using Microsoft.Extensions.Logging;
-using Microsoft.IdentityModel.Abstractions;
-using Microsoft.WindowsAzure.Storage.Table;
-using Microsoft.WindowsAzure.Storage;
-using System.ComponentModel;
 using Microsoft.ApplicationInsights.Extensibility;
+using Microsoft.Azure.WebJobs;
+using Microsoft.Dynamics365.OrganizationScanner.DAL;
+using Microsoft.Extensions.Logging;
+using System;
+using System.Reflection.PortableExecutable;
 
 namespace Microsoft.Dynamics365.OrganizationScanner
 {
@@ -63,96 +58,62 @@ namespace Microsoft.Dynamics365.OrganizationScanner
             string ConnectionString = System.Environment.GetEnvironmentVariable(
                                     "SQL_CONNECTION_STRING", EnvironmentVariableTarget.Process);
             
-            using (SqlConnection conn = new SqlConnection(ConnectionString))
+            SqlDataLayer sqlDataLayer = new SqlDataLayer(log, ConnectionString);
+
+            DTO.AsyncOperationDTO.AsyncOperationResponse asyncOperationResponse = sqlDataLayer.ExecuteAsyncOperationRequest(new DTO.AsyncOperationDTO.AsyncOperationRequest()
             {
-
-                String sql = "select [count] = count(name), name, statuscode from asyncoperation where statuscode < 30 group by statuscode, name order by [count] desc";
-                
-                using (SqlCommand command = new SqlCommand(sql, conn))
+                SqlCommand = "select [count] = count(name), name, statuscode from asyncoperation where statuscode < 30 group by statuscode, name order by [count] desc",
+                CorrelatonId = Guid.NewGuid().ToString()
+            }).Result;
+            foreach(DTO.AsyncOperationDTO.AsyncOperation asyncOperation in asyncOperationResponse.AsyncOperations)
+            {
+                MetricTelemetry metricTelemetry = new MetricTelemetry();
+                EventTelemetry eventTelemetry = new EventTelemetry();
+                metricTelemetry.Sum = asyncOperation.Count;
+                eventTelemetry.Properties.Add("StatusCount", asyncOperation.Count.ToString());
+                if (!String.IsNullOrEmpty(asyncOperation.Name))
                 {
-                    
-                    this.telemetryClient.TrackTrace("Connecting to SQL");
-                    conn.Open();
-                    
-                    command.CommandTimeout = 0;
-                    this.telemetryClient.TrackTrace("Executing SQL Command");
-                    try
-                    {
-                        using (SqlDataReader reader = command.ExecuteReader())
-                        {
-                            this.telemetryClient.TrackTrace("Executed SQL Command");
-                            while (reader.Read())
-                            {
-                                MetricTelemetry metricTelemetry = new MetricTelemetry();
-                                EventTelemetry eventTelemetry = new EventTelemetry();
-                                switch (reader.GetInt32(2))
-                                {
-                                    case 0: //Waiting for Resources
-                                        metricTelemetry.Sum = reader.GetInt32(0);
-                                        metricTelemetry.MetricNamespace = "Waiting for Resources";
-                                        eventTelemetry.Properties.Add("StatusName", "Waiting for Resources");
-                                        eventTelemetry.Properties.Add("StatusCount", reader.GetInt32(0).ToString());
-                                        break;
-                                    case 10:
-                                        metricTelemetry.Sum = reader.GetInt32(0);
-                                        metricTelemetry.MetricNamespace = "Waiting";
-                                        eventTelemetry.Properties.Add("StatusName", "Waiting");
-                                        eventTelemetry.Properties.Add("StatusCount", reader.GetInt32(0).ToString());
-                                        break;
-                                    case 20:
-                                        metricTelemetry.Sum = reader.GetInt32(0);
-                                        metricTelemetry.MetricNamespace = "In Progress";
-                                        eventTelemetry.Properties.Add("StatusName", "In Progress");
-                                        eventTelemetry.Properties.Add("StatusCount", reader.GetInt32(0).ToString());
-                                        break;
-                                    case 21:
-                                        metricTelemetry.Sum = reader.GetInt32(0);
-                                        metricTelemetry.MetricNamespace = "Pausing";
-                                        eventTelemetry.Properties.Add("StatusName", "Pausing");
-                                        eventTelemetry.Properties.Add("StatusCount", reader.GetInt32(0).ToString());
-                                        break;
-                                    case 22:
-                                        metricTelemetry.Sum = reader.GetInt32(0);
-                                        metricTelemetry.MetricNamespace = "Canceling";
-                                        eventTelemetry.Properties.Add("StatusName", "Canceling");
-                                        eventTelemetry.Properties.Add("StatusCount", reader.GetInt32(0).ToString());
-                                        break;
-                                    default:
-                                        eventTelemetry.Properties.Add("StatusName", reader.GetInt32(2).ToString());
-                                        eventTelemetry.Properties.Add("StatusCount", reader.GetInt32(0).ToString());
-                                        eventTelemetry.Metrics.Add(reader.GetInt32(2).ToString(), reader.GetInt32(0));
-                                        break;
-                                }
-                                if (!reader.IsDBNull(1))
-                                {
-                                    metricTelemetry.Name = reader.GetString(1);
-                                    eventTelemetry.Name = reader.GetString(1);
-                                }
-                                //eventTelemetry.Properties.Add("Status", reader.GetInt32(2));
-                                this.telemetryClient.TrackMetric(metricTelemetry);
-                                this.telemetryClient.TrackEvent(eventTelemetry);
-                            }
-                            this.telemetryClient.Flush();
-                        }
-                    }
-                    catch(SqlException sqlEx)
-                    {
-                        this.telemetryClient.TrackException(sqlEx);
-                        this.telemetryClient.Flush();
-                        throw sqlEx;
-                    }
-                    catch (Exception ex)
-                    {
-                        this.telemetryClient.TrackException(ex);
-                        this.telemetryClient.Flush();
-                        throw ex;
-                    }
-
-                    
+                    metricTelemetry.Name = asyncOperation.Name;
+                    eventTelemetry.Name = asyncOperation.Name;
                 }
+                switch (asyncOperation.StatusCode)
+                {
+                    case DTO.AsyncOperationDTO.AsyncOperationStatusCode.WaitingForResources: //Waiting for Resources
+                        metricTelemetry.MetricNamespace = "Waiting for Resources";
+                        eventTelemetry.Properties.Add("StatusName", "Waiting for Resources");
+                        break;
+                    case DTO.AsyncOperationDTO.AsyncOperationStatusCode.Waiting:
+                        metricTelemetry.MetricNamespace = "Waiting";
+                        eventTelemetry.Properties.Add("StatusName", "Waiting");
+                        break;
+                    case DTO.AsyncOperationDTO.AsyncOperationStatusCode.InProgress:
+                        metricTelemetry.MetricNamespace = "In Progress";
+                        eventTelemetry.Properties.Add("StatusName", "In Progress");
+                        break;
+                    case DTO.AsyncOperationDTO.AsyncOperationStatusCode.Pausing:
+                        metricTelemetry.MetricNamespace = "Pausing";
+                        eventTelemetry.Properties.Add("StatusName", "Pausing");
+                        break;
+                    case DTO.AsyncOperationDTO.AsyncOperationStatusCode.Canceling:
+                        metricTelemetry.MetricNamespace = "Canceling";
+                        eventTelemetry.Properties.Add("StatusName", "Canceling");
+                        break;
+                    default:
+                        eventTelemetry.Properties.Add("StatusName", "");
+                        eventTelemetry.Properties.Add("StatusCount", asyncOperation.StatusCode.ToString());
+                        eventTelemetry.Metrics.Add("", Convert.ToDouble(asyncOperation.StatusCode));
+                        break;
+                }
+
+                //eventTelemetry.Properties.Add("Status", reader.GetInt32(2));
+                this.telemetryClient.TrackMetric(metricTelemetry);
+                this.telemetryClient.TrackEvent(eventTelemetry);
             }
 
+        
+        this.telemetryClient.Flush();
 
-        }
+
     }
+}
 }

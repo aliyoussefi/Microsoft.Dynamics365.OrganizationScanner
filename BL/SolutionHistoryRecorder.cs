@@ -31,85 +31,13 @@ using System.Runtime.Serialization;
 using Microsoft.OData.Edm;
 using static Microsoft.Dynamics365.OrganizationScanner.DAL.DataverseDataLayer;
 using System.Collections.Generic;
-using Microsoft.Xrm.Sdk.Organization;
 using System.Drawing;
+using static Microsoft.Dynamics365.OrganizationScanner.DTO.SolutionHistoryDTO;
 
 namespace Microsoft.Dynamics365.OrganizationScanner
 {
     public class SolutionHistoryRecorder
     {
-        #region DTO
-        [DataContract]
-        public class SolutionHistoryRecorderRequest
-        {
-            [DataMember]
-            public string SolutionName { get; set; }
-            [DataMember]
-            public string StartTime { get; set; }
-
-        }
-        public class SolutionHistoryRecorderResponse
-        {
-            [DataMember]
-            public string SolutionName { get; set; }
-            [DataMember]
-            public string StartTime { get; set; }
-            [DataMember]
-            public List<SolutionHistory> SolutionHistories { get; set; }
-
-        }
-
-        public class SolutionHistory
-        {
-            [DataMember]
-            public string msdyn_solutionhistoryid { get; set; }
-            [DataMember]
-            public string msdyn_name { get; set; }
-            [DataMember]
-            public string msdyn_correlationid { get; set; }
-            [DataMember]
-            public string msdyn_endtime { get; set; }
-            [DataMember]
-            public string msdyn_errorcode { get; set; }
-            [DataMember]
-            public string msdyn_exceptionmessage { get; set; }
-            [DataMember]
-            public string msdyn_exceptionstack { get; set; }
-            [DataMember]
-            public string msdyn_ismanaged { get; set; }
-            [DataMember]
-            public string msdyn_ispatch { get; set; }
-            [DataMember]
-            public string msdyn_operation { get; set; }
-            [DataMember]
-            public string msdyn_packagename { get; set; }
-            [DataMember]
-            public string msdyn_publishername { get; set; }
-            [DataMember]
-            public string msdyn_solutionid { get; set; }
-            [DataMember]
-            public string msdyn_solutionversion { get; set; }
-            [DataMember]
-            public string msdyn_starttime { get; set; }
-            [DataMember]
-            public string msdyn_status { get; set; }
-            [DataMember]
-            public string msdyn_suboperation { get; set; }
-            [DataMember]
-            public string msdyn_result { get; set; }
-            [DataMember]
-            public string msdyn_totaltime { get; set; }
-            [DataMember]
-            public string msdyn_publisherid { get; set; }
-            [DataMember]
-            public string msdyn_retrycount { get; set; }
-            [DataMember]
-            public string msdyn_packageversion { get; set; }
-            [DataMember]
-            public string msdyn_maxretries { get; set; }
-
-        }
-        #endregion DTO
         #region class props
         private readonly TelemetryClient telemetryClient;
         public readonly string tenantId;
