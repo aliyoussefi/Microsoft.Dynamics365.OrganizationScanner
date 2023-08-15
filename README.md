@@ -33,3 +33,42 @@ customEvents
 # Example Kusto Query to Monitor for Exceptions on SQL Query
 dependencies 
 | where type == 'SQL' and success == false
+
+# Explanation of Virtual Table
+The Solution History Recorder will poll the Dataverse API as a service principal to get all solution history records for today. Once retrieved, the data is written to a CSV file.
+This CSV file is within a container that is used as an external table for a SERVERLESS Azure Synapse Analytics SQL Pool. Using queries across databases, we can join history to solution.
+
+Alternatively you can write this data to Azure Log Analytics and be alerted when a new solution history appears.
+
+## Why is this needed?
+Virtual tables are not exposed within Power Automate natively requiring connecting to the API similar to this solution.
+Low code can be used here and potentially will be added to this repo.
+
+# Example SQL Query
+The sample query is located here: Microsoft.Dynamics365.OrganizationScanner\CREAT_TABLE_SOLUTION_HISTORY.sql
+![alt text](CREAT_TABLE_SOLUTION_HISTORY.sql "Solution History SQL Table Create")
+```SQL 
+SELECT TOP (1000) [msdyn_solutionhistoryid]
+      ,[msdyn_solutionid]
+      ,[msdyn_endtime]
+      ,[msdyn_starttime]
+      ,[msdyn_errorcode]
+      ,[msdyn_exceptionmessage]
+      ,[msdyn_exceptionstack]
+      ,[msdyn_ismanaged]
+      ,[msdyn_ispatch]
+      ,[msdyn_maxretries]
+      ,[msdyn_name]
+      ,[msdyn_operation]
+      ,[msdyn_packagename]
+      ,[msdyn_packageversion]
+      ,[msdyn_publisherid]
+      ,[msdyn_publishername]
+      ,[msdyn_result]
+      ,[msdyn_retrycount]
+      ,[msdyn_solutionversion]
+      ,[msdyn_status]
+      ,[msdyn_suboperation]
+      ,[msdyn_totaltime]
+  FROM [dbo].[SolutionHistory]
+```
