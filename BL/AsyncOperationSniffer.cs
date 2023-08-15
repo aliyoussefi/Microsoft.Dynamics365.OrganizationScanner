@@ -50,7 +50,7 @@ namespace Microsoft.Dynamics365.OrganizationScanner
         //}
 
         [FunctionName("AsyncOperationSniffer")]
-        public void Run([TimerTrigger("0 */35 * * * *")]TimerInfo myTimer, ILogger log)
+        public void Run([TimerTrigger("0 */5 * * * *")]TimerInfo myTimer, ILogger log)
         {
             log.LogInformation($"C# Timer trigger function executed at: {DateTime.Now}");
 
