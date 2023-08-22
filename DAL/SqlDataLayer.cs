@@ -51,16 +51,16 @@ namespace Microsoft.Dynamics365.OrganizationScanner.DAL
                     {
                         using (SqlDataReader reader = command.ExecuteReader())
                         {
-                            this._logger.LogInformation("Executed SQL Command");
+                            this._logger.LogInformation("Executed SQL Command. Returned " + reader.FieldCount + " columns.");
                             response.AsyncOperations = new List<AsyncOperationDTO.AsyncOperation>();
                             while (reader.Read())
                             {
                                 response.AsyncOperations.Add(new AsyncOperationDTO.AsyncOperation()
                                 {
-                                    StatusCode = (AsyncOperationStatusCode)reader.GetInt32(2),
+                                    StatusCode = reader.IsDBNull(reader.GetInt32(2)) ? AsyncOperationStatusCode.Unknown : (AsyncOperationStatusCode)reader.GetInt32(2),
                                     //StatusName = (AsyncOperationStatusCode)reader.GetInt32(2).ToString(),
                                     Name = reader.GetString(1),
-                                    Count = reader.GetInt32(0)
+                                    Count = reader.IsDBNull(reader.GetInt32(0)) ? 0 : reader.GetInt32(0)
                                 });
                                 //MetricTelemetry metricTelemetry = new MetricTelemetry();
                                 //EventTelemetry eventTelemetry = new EventTelemetry();

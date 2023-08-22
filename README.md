@@ -23,6 +23,21 @@ This repo showcases how to read the async operation table and deliver to Applica
 4. Select Publish.
 5. Go through steps to push to Azure Function.
 
+# Azure Function Settings
+"AZURE_STORAGE_CONNECTION_STRING": "<Azure Storage connection string>",
+"FUNCTIONS_WORKER_RUNTIME": "dotnet",
+"APPINSIGHTS_INSTRUMENTATIONKEY": "<Azure Application Insights connection string>",
+"SQL_CONNECTION_STRING": "<Dataverse SQL replica connection string>",
+"TENANT_ID": "<Azure AD Tenant Id>",
+"ORG_URL": "https://<organization>.crm.dynamics.com",
+"CLIENT_ID": "<S2S User Client Id>",
+"CLIENT_SECRET": "<S2S User Client Secret>",
+"POWER_PLATFORM_URL": "https://api.powerplatform.com/",
+"POWER_PLATFORM_CLIENT_ID": "<Power Platform Admin API Client Id>",
+"POWER_PLATFORM_CLIENT_SECRET": "<Power Platform Admin API Client Secret>",
+"POWER_PLATFORM_USERNAME": "<Dataverse Admin username>@<Azure AD Tenant Name>.onmicrosoft.com",
+"POWER_PLATFORM_PASSWORD": "<Dataverse Admin password>"
+
 # Example Kusto Query for Async Operations
 customEvents
 |extend cd = parse_json(customDimensions)
@@ -34,7 +49,7 @@ customEvents
 dependencies 
 | where type == 'SQL' and success == false
 
-# Explanation of Virtual Table
+## Explanation of Virtual Table
 The Solution History Recorder will poll the Dataverse API as a service principal to get all solution history records for today. Once retrieved, the data is written to a CSV file.
 This CSV file is within a container that is used as an external table for a SERVERLESS Azure Synapse Analytics SQL Pool. Using queries across databases, we can join history to solution.
 
@@ -45,8 +60,8 @@ Virtual tables are not exposed within Power Automate natively requiring connecti
 Low code can be used here and potentially will be added to this repo.
 
 # Example SQL Query
-The sample query is located here: Microsoft.Dynamics365.OrganizationScanner\CREAT_TABLE_SOLUTION_HISTORY.sql
-![alt text](CREAT_TABLE_SOLUTION_HISTORY.sql "Solution History SQL Table Create")
+The sample query is located here: Microsoft.Dynamics365.OrganizationScanner\CREATE_TABLE_SOLUTION_HISTORY.sql
+![alt text](CREATE_TABLE_SOLUTION_HISTORY.sql "Solution History SQL Table Create")
 ```SQL 
 SELECT TOP (1000) [msdyn_solutionhistoryid]
       ,[msdyn_solutionid]

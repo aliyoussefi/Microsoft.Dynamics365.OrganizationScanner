@@ -55,7 +55,9 @@ namespace Microsoft.Dynamics365.OrganizationScanner.DTO
             [Display(Name = "Pausing")]
             Pausing = 21,
             [Display(Name = "Canceling")]
-            Canceling = 22
+            Canceling = 22,
+            [Display(Name = "Unknown")]
+            Unknown = 99
 
         }
     }

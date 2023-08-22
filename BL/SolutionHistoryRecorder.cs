@@ -143,8 +143,8 @@ namespace Microsoft.Dynamics365.OrganizationScanner
                     x.Write(System.Text.Encoding.Default.GetBytes(rec.msdyn_totaltime + ""));
                     x.Write(System.Text.Encoding.Default.GetBytes("\n"));
                 }
-                //x.Flush();
-               // x.Close();
+                x.Flush();
+               x.Close();
             }
             string responseMessage = string.IsNullOrEmpty(data.SolutionName)
                 ? "Soluton History Recorded completed successfully. Found " + ExecuteSolutionHistoryResponse.SolutionHistories.Count() + " for solution " + data.SolutionName

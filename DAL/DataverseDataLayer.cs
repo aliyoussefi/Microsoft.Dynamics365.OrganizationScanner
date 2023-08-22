@@ -92,7 +92,7 @@ namespace Microsoft.Dynamics365.OrganizationScanner.DAL
             else
             {
                 if (!String.IsNullOrEmpty(solutionName)) { queryFilter += "msdyn_name eq '" + solutionName + "'"; }
-                if (!String.IsNullOrEmpty(startTime)) { queryFilter = "Microsoft.Dynamics.CRM.OnOrAfter(PropertyName=@p1,PropertyValue=@p2)&@p1='msdyn_starttime'&@p2='" + startTime + "'"; }
+                if (!String.IsNullOrEmpty(startTime)) { queryFilter += "Microsoft.Dynamics.CRM.OnOrAfter(PropertyName=@p1,PropertyValue=@p2)&@p1='msdyn_starttime'&@p2='" + startTime + "'"; }
             }
             var retrieveResponse = httpClient.GetAsync(String.Format("api/data/v9.0/msdyn_solutionhistories{0}", queryFilter));
             if (retrieveResponse.Result.IsSuccessStatusCode)
@@ -123,7 +123,7 @@ namespace Microsoft.Dynamics365.OrganizationScanner.DAL
             else
             {
                 if (!String.IsNullOrEmpty(solutionName)) { queryFilter += "msdyn_name eq '" + solutionName + "'"; }
-                if (!String.IsNullOrEmpty(startTime)) { queryFilter += "filter=Microsoft.Dynamics.CRM.Today(PropertyName=@p1)&@p1='msdyn_starttime'"; }
+                if (!String.IsNullOrEmpty(startTime)) { queryFilter += "Microsoft.Dynamics.CRM.Today(PropertyName=@p1)&@p1='msdyn_starttime'"; }
             }
 
             try
