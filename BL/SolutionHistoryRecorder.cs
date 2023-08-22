@@ -108,47 +108,12 @@ namespace Microsoft.Dynamics365.OrganizationScanner
             
             log.LogInformation("Found " + ExecuteSolutionHistoryResponse.SolutionHistories.Count + " for solution.");
 
-            string storageConnectionString = this._azureStorageConnectionString;
-            var storageAccount = CloudStorageAccount.Parse(storageConnectionString);
-            var client = storageAccount.CreateCloudBlobClient();
-            var container = client.GetContainerReference(@"dataverse-90alitestins-alyoussefnaos\solutionhistory");
-            var blob = container.GetBlockBlobReference("data" + DateTime.UtcNow.ToString("MM-dd-yyyy-H-mm-ss") + ".csv");
-            using (CloudBlobStream x = blob.OpenWriteAsync().Result)
-            {
-                foreach (var rec in ExecuteSolutionHistoryResponse.SolutionHistories)
-                {
-                    x.Write(System.Text.Encoding.Default.GetBytes(rec.msdyn_endtime + ","));
-                    x.Write(System.Text.Encoding.Default.GetBytes(rec.msdyn_errorcode + ","));
-                    x.Write(System.Text.Encoding.Default.GetBytes(rec.msdyn_exceptionmessage + ","));
-                    x.Write(System.Text.Encoding.Default.GetBytes(rec.msdyn_exceptionstack + ","));
-                    x.Write(System.Text.Encoding.Default.GetBytes(rec.msdyn_ismanaged + ","));
-                    x.Write(System.Text.Encoding.Default.GetBytes(rec.msdyn_ispatch + ","));
-                    x.Write(System.Text.Encoding.Default.GetBytes(rec.msdyn_maxretries + ","));
-                    x.Write(System.Text.Encoding.Default.GetBytes(rec.msdyn_name + ","));
-                    x.Write(System.Text.Encoding.Default.GetBytes(rec.msdyn_operation + ","));
-                    x.Write(System.Text.Encoding.Default.GetBytes(rec.msdyn_packagename + ","));
+            AzureStorageDataLayer azureStorageData = new AzureStorageDataLayer(log, this._azureStorageConnectionString);
+            azureStorageData.WriteToAzureBlobStorage(@"dataverse-90alitestins-alyoussefnaos\solutionhistory", "data" +DateTime.UtcNow.ToString("MM-dd-yyyy-H-mm-ss") + ".csv", ExecuteSolutionHistoryResponse.SolutionHistories);
 
-
-                    x.Write(System.Text.Encoding.Default.GetBytes(rec.msdyn_packageversion + ","));
-                    x.Write(System.Text.Encoding.Default.GetBytes(rec.msdyn_publisherid + ","));
-                    x.Write(System.Text.Encoding.Default.GetBytes(rec.msdyn_publishername + ","));
-                    x.Write(System.Text.Encoding.Default.GetBytes(rec.msdyn_result + ","));
-                    x.Write(System.Text.Encoding.Default.GetBytes(rec.msdyn_retrycount + ","));
-                    x.Write(System.Text.Encoding.Default.GetBytes(rec.msdyn_solutionhistoryid + ","));
-                    x.Write(System.Text.Encoding.Default.GetBytes(rec.msdyn_solutionid + ","));
-                    x.Write(System.Text.Encoding.Default.GetBytes(rec.msdyn_solutionversion + ","));
-                    x.Write(System.Text.Encoding.Default.GetBytes(rec.msdyn_starttime + ","));
-                    x.Write(System.Text.Encoding.Default.GetBytes(rec.msdyn_status + ","));
-                    x.Write(System.Text.Encoding.Default.GetBytes(rec.msdyn_suboperation + ","));
-                    x.Write(System.Text.Encoding.Default.GetBytes(rec.msdyn_totaltime + ""));
-                    x.Write(System.Text.Encoding.Default.GetBytes("\n"));
-                }
-                x.Flush();
-               x.Close();
-            }
             string responseMessage = string.IsNullOrEmpty(data.SolutionName)
-                ? "Soluton History Recorded completed successfully. Found " + ExecuteSolutionHistoryResponse.SolutionHistories.Count() + " for solution " + data.SolutionName
-                : $"Hello, {name}. This HTTP triggered function executed successfully.";
+            ? "Soluton History Recorded completed successfully. Found " + ExecuteSolutionHistoryResponse.SolutionHistories.Count() + " for solution " + data.SolutionName
+            : $"Hello, {name}. This HTTP triggered function executed successfully.";
 
             return new OkObjectResult(responseMessage);
         }
