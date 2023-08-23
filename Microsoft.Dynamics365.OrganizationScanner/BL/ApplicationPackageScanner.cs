@@ -17,7 +17,6 @@ using Microsoft.Azure.WebJobs.Extensions.Http;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
-using Microsoft.IdentityModel.Clients.ActiveDirectory;
 using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Net;
@@ -26,25 +25,33 @@ using Microsoft.ApplicationInsights.DataContracts;
 using Microsoft.ApplicationInsights;
 using System.Diagnostics;
 using System.Linq;
+using Microsoft.Dynamics365.OrganizationScanner.DAL;
+using System.Security;
 
 namespace Microsoft.Dynamics365.OrganizationScanner
 {
-    public class Dynamics365Availability
+    public class ApplicationPackageScanner
     {
         private readonly TelemetryClient telemetryClient;
         public readonly string tenantId;
         public readonly string orgUrl;
         public readonly string clientId;
         public readonly string clientSecret;
-        public Dynamics365Availability() {
+        public readonly string username;
+        public readonly SecureString password;
+        public ApplicationPackageScanner() {
             this.tenantId = System.Environment.GetEnvironmentVariable(
                                     "TENANT_ID", EnvironmentVariableTarget.Process);
             this.orgUrl = System.Environment.GetEnvironmentVariable(
-                                    "ORG_URL", EnvironmentVariableTarget.Process);
+                                    "POWER_PLATFORM_URL", EnvironmentVariableTarget.Process);
             this.clientId = System.Environment.GetEnvironmentVariable(
-                                    "CLIENT_ID", EnvironmentVariableTarget.Process);
+                                    "POWER_PLATFORM_CLIENT_ID", EnvironmentVariableTarget.Process);
             this.clientSecret = System.Environment.GetEnvironmentVariable(
-                                    "CLIENT_SECRET", EnvironmentVariableTarget.Process);
+                                    "POWER_PLATFORM_CLIENT_SECRET", EnvironmentVariableTarget.Process);
+            this.username = System.Environment.GetEnvironmentVariable(
+                        "POWER_PLATFORM_USERNAME", EnvironmentVariableTarget.Process);
+            this.password = new NetworkCredential("",System.Environment.GetEnvironmentVariable(
+                        "POWER_PLATFORM_PASSWORD", EnvironmentVariableTarget.Process)).SecurePassword;
 
             string key = System.Environment.GetEnvironmentVariable(
                 "APPINSIGHTS_INSTRUMENTATIONKEY", EnvironmentVariableTarget.Process);
@@ -53,56 +60,51 @@ namespace Microsoft.Dynamics365.OrganizationScanner
             this.telemetryClient.TrackTrace("MonitorWithApplicationInsightsExample constructor called. Using Environment Variable APPINSIGHTS_INSTRUMENTATIONKEY to get Application Insights Key");
 
         }
-        [FunctionName("TestAvailability")]
+        [FunctionName("GetEnvironmentApplicationPackage")]
         public async Task<IActionResult> Run(
-            [HttpTrigger(AuthorizationLevel.Function, "post", Route = null)] HttpRequest req,
-            ExecutionContext exCtx,
+            [HttpTrigger(AuthorizationLevel.Function,"get", "post", Route = null)] HttpRequest req,
+            System.Threading.ExecutionContext exCtx,
             ILogger log)
         {
             log.LogInformation("C# HTTP trigger function processed a request.");
 
-            string name = req.Query["name"];
+            string environmentId = req.Query["environmentId"];
+            string appInstallState = req.Query["appInstallState"];
+            string appName= req.Query["appName"];
 
             string requestBody = await new StreamReader(req.Body).ReadToEndAsync();
             dynamic data = JsonConvert.DeserializeObject(requestBody);
-            name = name ?? data?.name;
+            //name = name ?? data?.name;
 
-
-            string token = ConnectToDynamics(new S2SAuthenticationSettings()
+            PowerPlatformDataLayer powerPlatformDataLayer = new PowerPlatformDataLayer(log);
+            string token = powerPlatformDataLayer.ConnectToPowerPlatform(new DAL.UserAuthenticationSettings()
             {
                 clientId = clientId,
-                clientSecret = clientSecret,
+                username = username,
+                password = password,
                 tenantID = tenantId,
                 organizationUrl = orgUrl
             });
             Stopwatch requestTime = new Stopwatch();
             requestTime.Start();
-            HttpResponseMessage whoAmIResponse = await ExecuteWhoAmI(log, orgUrl, token);
+            DTO.ApplicationPackageDTO.ApplicationStatusResponse applicationStatusResponse = await powerPlatformDataLayer.ExecuteApplicationStatusRequest(new DTO.ApplicationPackageDTO.ApplicationStatusRequest()
+            {
+                ApplicationInstallState = appInstallState,
+                ApplicationName = appName,
+                CorrelationId = Guid.NewGuid().ToString(),
+                EnvironmentId = environmentId
+            });
             requestTime.Stop();
+            //DTO.ApplicationPackageDTO.ApplicationPackage rtnObject = applicationStatusResponse.ApplicationPackages.Select(x => x.uniqueName == appName).FirstOrDefault();
             //rtnObject.Headers.Add("InvocationId", exCtx.InvocationId.ToString());
            
-            SendAvailabilityTelemetry(exCtx.InvocationId, exCtx.InvocationId, whoAmIResponse, Convert.ToInt32(requestTime.ElapsedMilliseconds));
-            string responseMessage = string.IsNullOrEmpty(name)
+            string responseMessage = string.IsNullOrEmpty(environmentId)
                 ? "This HTTP triggered function executed successfully. Pass a name in the query string or in the request body for a personalized response."
-                : $"Hello, {name}. This HTTP triggered function executed successfully.";
+                : $"Hello, {environmentId}. This HTTP triggered function executed successfully.";
 
             return new OkObjectResult(responseMessage);
         }
 
-        private string ConnectToDynamics(S2SAuthenticationSettings authenticationSettings) {
-            ClientCredential clientcred = new ClientCredential(authenticationSettings.clientId, authenticationSettings.clientSecret);
-            AuthenticationContext authenticationContext = new AuthenticationContext(authenticationSettings.aadInstance + authenticationSettings.tenantID);
-            var authenticationResult = authenticationContext.AcquireTokenAsync(authenticationSettings.organizationUrl, clientcred).Result;
-            return authenticationResult.AccessToken;
-
-        }
-        public class S2SAuthenticationSettings {
-            public string organizationUrl;
-            public string clientId;
-            public string clientSecret;
-            public string aadInstance = "https://login.microsoftonline.com/";
-            public string tenantID;
-        }
 
         private async Task<HttpResponseMessage> ExecuteWhoAmI(ILogger log, string dynamicsUrl, string token) {
             var httpClient = new HttpClient

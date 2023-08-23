@@ -1,20 +1,13 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Net.Http.Headers;
-using System.Net.Http;
-using System.Net;
-using System.Security;
-using System.ServiceModel.Description;
-using System.Text;
-using System.Threading.Tasks;
-using Microsoft.IdentityModel.Clients.ActiveDirectory;
-using Microsoft.PowerPlatform.Dataverse.Client;
-using Newtonsoft.Json.Linq;
-using Microsoft.Xrm.Sdk.PluginTelemetry;
+﻿using Microsoft.Dynamics365.OrganizationScanner.DTO;
 using Microsoft.Extensions.Logging;
-using Microsoft.AspNetCore.Http;
-using Microsoft.Dynamics365.OrganizationScanner.DTO;
+using Microsoft.Identity.Client;
+using Microsoft.PowerPlatform.Dataverse.Client;
+using System;
+using System.Net;
+using System.Net.Http;
+using System.Net.Http.Headers;
+using System.Security;
+using System.Threading.Tasks;
 
 namespace Microsoft.Dynamics365.OrganizationScanner.DAL
 {
@@ -36,14 +29,17 @@ namespace Microsoft.Dynamics365.OrganizationScanner.DAL
 
         public string ConnectToDynamics(S2SAuthenticationSettings authenticationSettings)
         {
-            ClientCredential clientcred = new ClientCredential(authenticationSettings.clientId, authenticationSettings.clientSecret);
-            AuthenticationContext authenticationContext = new AuthenticationContext(authenticationSettings.aadInstance + authenticationSettings.tenantID);
-            var authenticationResult = authenticationContext.AcquireTokenAsync(authenticationSettings.organizationUrl, clientcred).Result;
-            _token = authenticationResult.AccessToken;
+
+            IConfidentialClientApplication confidentialClientApplication = ConfidentialClientApplicationBuilder
+             .Create(authenticationSettings.clientId)
+             .WithClientSecret(authenticationSettings.clientSecret)
+             .WithTenantId(authenticationSettings.tenantID)
+             .Build();
+            _token = confidentialClientApplication.AcquireTokenForClient(new string[] { ".default" }).ExecuteAsync().Result.AccessToken;
 
             Microsoft.PowerPlatform.Dataverse.Client.ServiceClient dataverseClient = new ServiceClient(new Uri(authenticationSettings.organizationUrl), authenticationSettings.clientId, authenticationSettings.clientSecret, true, _logger);
             _serviceClient = dataverseClient;
-            return authenticationResult.AccessToken;
+            return _serviceClient.CurrentAccessToken;
 
         }
 

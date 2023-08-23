@@ -8,34 +8,24 @@
 # (ii) to include a valid copyright notice on Your software product in which the Sample Code is embedded; 
 # and (iii) to indemnify, hold harmless, and defend Us and Our suppliers from and against any claims or lawsuits, including attorneys’ fees, that arise or result from the use or distribution of the Sample Code 
 */
-using System;
-using System.IO;
-using System.Threading.Tasks;
+using Microsoft.ApplicationInsights;
+using Microsoft.ApplicationInsights.DataContracts;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Extensions.Http;
-using Microsoft.AspNetCore.Http;
-using Microsoft.Extensions.Logging;
-using Newtonsoft.Json;
-using Microsoft.IdentityModel.Clients.ActiveDirectory;
-using System.Net.Http;
-using System.Net.Http.Headers;
-using System.Net;
-using Newtonsoft.Json.Linq;
-using Microsoft.ApplicationInsights.DataContracts;
-using Microsoft.ApplicationInsights;
-using System.Diagnostics;
-using System.Linq;
 using Microsoft.Dynamics365.OrganizationScanner.DAL;
-using System.Runtime.Serialization;
-using Microsoft.OData.Edm;
-using static Microsoft.Dynamics365.OrganizationScanner.DAL.DataverseDataLayer;
-using System.Collections.Generic;
-using System.Drawing;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
+using Newtonsoft.Json;
+using System;
+using System.Diagnostics;
+using System.IO;
+using System.Linq;
+using System.Net.Http;
+using System.Threading.Tasks;
 using static Microsoft.Dynamics365.OrganizationScanner.DTO.SolutionHistoryDTO;
-using System.Globalization;
-using Microsoft.WindowsAzure.Storage.Blob;
-using Microsoft.WindowsAzure.Storage;
 
 namespace Microsoft.Dynamics365.OrganizationScanner
 {
@@ -75,7 +65,7 @@ namespace Microsoft.Dynamics365.OrganizationScanner
         [FunctionName("SolutionHistoryRecorder")]
         public async Task<IActionResult> Run(
             [HttpTrigger(AuthorizationLevel.Function, "post", Route = null)] HttpRequest req,
-            ExecutionContext exCtx,
+            System.Threading.ExecutionContext exCtx,
             ILogger log)
         {
             log.LogInformation("Running SolutionHistoryRecorder.");
@@ -121,7 +111,7 @@ namespace Microsoft.Dynamics365.OrganizationScanner
         [FunctionName("SolutionHistoryWriteTodaysHistory")]
         public void WriteTodaysHistory(
     [TimerTrigger("55 23 * * * ")] TimerInfo myTimer,
-    ExecutionContext exCtx,
+    System.Threading.ExecutionContext exCtx,
     ILogger log)
         {
             log.LogInformation("Running SolutionHistoryWriteTodaysHistory.");
@@ -159,44 +149,8 @@ namespace Microsoft.Dynamics365.OrganizationScanner
             //    //Log or store in table...
             //    //log.LogInformation(String.Format("{0} Solution History", data.SolutionName), solutionHistory.msdyn_endtime));
             //}
-            string storageConnectionString = this._azureStorageConnectionString;
-            var storageAccount = CloudStorageAccount.Parse(storageConnectionString);
-            var client = storageAccount.CreateCloudBlobClient();
-            var container = client.GetContainerReference(@"dataverse-90alitestins-alyoussefnaos\solutionhistory");
-            var blob = container.GetBlockBlobReference("data" + DateTime.UtcNow.ToString("MM-dd-yyyy-H-mm-ss") + ".csv");
-            using (CloudBlobStream x = blob.OpenWriteAsync().Result)
-            {
-                foreach (var rec in ExecuteSolutionHistoryResponse.SolutionHistories)
-                {
-                    x.Write(System.Text.Encoding.Default.GetBytes(rec.msdyn_endtime + ","));
-                    x.Write(System.Text.Encoding.Default.GetBytes(rec.msdyn_errorcode + ","));
-                    x.Write(System.Text.Encoding.Default.GetBytes(rec.msdyn_exceptionmessage + ","));
-                    x.Write(System.Text.Encoding.Default.GetBytes(rec.msdyn_exceptionstack + ","));
-                    x.Write(System.Text.Encoding.Default.GetBytes(rec.msdyn_ismanaged + ","));
-                    x.Write(System.Text.Encoding.Default.GetBytes(rec.msdyn_ispatch + ","));
-                    x.Write(System.Text.Encoding.Default.GetBytes(rec.msdyn_maxretries + ","));
-                    x.Write(System.Text.Encoding.Default.GetBytes(rec.msdyn_name + ","));
-                    x.Write(System.Text.Encoding.Default.GetBytes(rec.msdyn_operation + ","));
-                    x.Write(System.Text.Encoding.Default.GetBytes(rec.msdyn_packagename + ","));
-
-
-                    x.Write(System.Text.Encoding.Default.GetBytes(rec.msdyn_packageversion + ","));
-                    x.Write(System.Text.Encoding.Default.GetBytes(rec.msdyn_publisherid + ","));
-                    x.Write(System.Text.Encoding.Default.GetBytes(rec.msdyn_publishername + ","));
-                    x.Write(System.Text.Encoding.Default.GetBytes(rec.msdyn_result + ","));
-                    x.Write(System.Text.Encoding.Default.GetBytes(rec.msdyn_retrycount + ","));
-                    x.Write(System.Text.Encoding.Default.GetBytes(rec.msdyn_solutionhistoryid + ","));
-                    x.Write(System.Text.Encoding.Default.GetBytes(rec.msdyn_solutionid + ","));
-                    x.Write(System.Text.Encoding.Default.GetBytes(rec.msdyn_solutionversion + ","));
-                    x.Write(System.Text.Encoding.Default.GetBytes(rec.msdyn_starttime + ","));
-                    x.Write(System.Text.Encoding.Default.GetBytes(rec.msdyn_status + ","));
-                    x.Write(System.Text.Encoding.Default.GetBytes(rec.msdyn_suboperation + ","));
-                    x.Write(System.Text.Encoding.Default.GetBytes(rec.msdyn_totaltime + ""));
-                    x.Write(System.Text.Encoding.Default.GetBytes("\n"));
-                }
-                x.Flush();
-                x.Close();
-            }
+            AzureStorageDataLayer azureStorageData = new AzureStorageDataLayer(log, this._azureStorageConnectionString);
+            azureStorageData.WriteToAzureBlobStorage(@"dataverse-90alitestins-alyoussefnaos\solutionhistory", "data" + DateTime.UtcNow.ToString("MM-dd-yyyy-H-mm-ss") + ".csv", ExecuteSolutionHistoryResponse.SolutionHistories);
 
         }
         #endregion

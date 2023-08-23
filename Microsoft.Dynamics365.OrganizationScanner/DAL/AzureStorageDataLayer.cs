@@ -34,7 +34,7 @@ namespace Microsoft.Dynamics365.OrganizationScanner.DAL
             using (CloudBlobStream x = blob.OpenWriteAsync().Result)
             {
                 _logger.LogInformation("Mapping SolutionHistory count of " + data.Count);
-                AzureStorageDataMapper.MapSolutionHistory(data, x);
+                AzureStorageDataMapper.MapSolutionHistory(data, x, _logger);
                 _logger.LogInformation("Flushing SolutionHistory");
                 x.Flush();
                 x.Close();

@@ -1,16 +1,8 @@
-﻿using Microsoft.ApplicationInsights.DataContracts;
-using Microsoft.Data.SqlClient;
+﻿using Microsoft.Data.SqlClient;
 using Microsoft.Dynamics365.OrganizationScanner.DTO;
 using Microsoft.Extensions.Logging;
-using Microsoft.IdentityModel.Clients.ActiveDirectory;
-using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Generic;
-using System.Net;
-using System.Net.Http;
-using System.Net.Http.Headers;
-using System.Runtime.InteropServices;
-using System.Security;
 using System.Threading.Tasks;
 using static Microsoft.Dynamics365.OrganizationScanner.DTO.AsyncOperationDTO;
 

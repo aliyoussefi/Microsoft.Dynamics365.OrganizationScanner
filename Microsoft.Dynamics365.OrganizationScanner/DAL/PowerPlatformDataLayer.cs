@@ -1,6 +1,5 @@
 ﻿using Microsoft.Dynamics365.OrganizationScanner.DTO;
 using Microsoft.Extensions.Logging;
-using Microsoft.IdentityModel.Clients.ActiveDirectory;
 using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Generic;
